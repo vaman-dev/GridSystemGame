@@ -16,6 +16,7 @@ public class PlacementManager : MonoBehaviour
     public bool verboseDebug = false;
 
     private Grid grid;
+    public BuildingTypeSO CurrentBuilding => currentBuildingSO;
 
     private void Start()
     {
@@ -132,18 +133,27 @@ public class PlacementManager : MonoBehaviour
     public void SelectBuilding(BuildingTypeSO building)
     {
         currentBuildingSO = building;
+
         if (building != null)
         {
             ghostPreview?.ShowGhost(building.prefab);
-            if (verboseDebug) Debug.Log($"PlacementManager: Selected building '{building.buildingName}' size {building.tileWidth}x{building.tileHeight}.");
+            if (verboseDebug)
+                Debug.Log($"PlacementManager: Selected building '{building.buildingName}' size {building.tileWidth}x{building.tileHeight}.");
         }
         else
         {
             ghostPreview?.HideGhost();
             gridVisualizer.ClearPlacementTiles();
+
             if (verboseDebug) Debug.Log("PlacementManager: Deselected building.");
         }
     }
 
-    public void DeselectBuilding() => SelectBuilding(null);
+    public void DeselectBuilding()
+    {
+        currentBuildingSO = null;
+        ghostPreview?.HideGhost();
+        gridVisualizer.ClearPlacementTiles();
+    }
+
 }
