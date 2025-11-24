@@ -10,7 +10,7 @@ public class QuadObjectPooler : MonoBehaviour
     public int poolSize = 200;
 
     [Header("Quad appearance")]
-    [Tooltip("Thin thickness so quad sits above the ground.")]
+    [Tooltip("Thin thickness so quad sits above the ground. Mesh pivot assumed centered.")]
     public float quadThickness = 0.01f;
 
     private Queue<GameObject> quadPool;

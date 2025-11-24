@@ -17,6 +17,6 @@ public class CameraSetup : MonoBehaviour
         cam.transform.position = gridCenter.position + dir * distance;
 
         cam.transform.LookAt(gridCenter.position);
-        cam.fieldOfView = 40f;
+        cam.fieldOfView = 30f;
     }
 }

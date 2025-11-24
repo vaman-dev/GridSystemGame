@@ -13,6 +13,10 @@ public class GridVisualizer : MonoBehaviour
     [SerializeField] private Material validMaterial;
     [SerializeField] private Material invalidMaterial;
 
+
+    [SerializeField] private float quadYOffset = 0.02f;
+
+    public Vector3 GridOriginPosition => gridSystem.grid.Origin;
     private readonly List<GameObject> activeQuads = new List<GameObject>();
 
     private void OnDrawGizmos()
@@ -83,8 +87,10 @@ public class GridVisualizer : MonoBehaviour
 
                 if (!grid.IsInsideGrid(gx, gy)) continue;
 
-                // center world position for this tile
-                Vector3 worldPos = grid.GetWorldPosition(gx, gy) + new Vector3(0f, thickness, 0f);
+                // --- Place quad so its bottom sits at ground ---
+                // If quad pivot is centered, set center = groundY + thickness/2
+                Vector3 worldPos = grid.GetWorldPosition(gx, gy) + new Vector3(0, quadYOffset, 0);
+
 
                 GameObject quad = QuadObjectPooler.Instance.GetQuad();
                 if (quad == null) continue;
@@ -106,6 +112,7 @@ public class GridVisualizer : MonoBehaviour
             }
         }
     }
+
 
 
     public void ClearPlacementTiles()

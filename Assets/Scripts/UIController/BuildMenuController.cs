@@ -3,7 +3,8 @@ using UnityEngine;
 public class BuildMenuController : MonoBehaviour
 {
     [Header("References")]
-    public PlacementManager placementManager; 
+    [Tooltip("Assign the PlacementManager instance (scene)")]
+    public PlacementManager placementManager;
 
     private void Awake()
     {
@@ -11,7 +12,10 @@ public class BuildMenuController : MonoBehaviour
             Debug.LogWarning("BuildMenuController: PlacementManager not assigned in inspector.");
     }
 
-    // Called by UI buttons (pass BuildingTypeSO in the inspector)
+    /// <summary>
+    /// Called by UI Button. Pass the BuildingTypeSO asset in the Button OnClick inspector.
+    /// Example: Button -> BuildMenuController.OnSelectBuilding -> (drag BuildingTypeSO)
+    /// </summary>
     public void OnSelectBuilding(BuildingTypeSO buildingSO)
     {
         if (buildingSO == null)
@@ -26,19 +30,13 @@ public class BuildMenuController : MonoBehaviour
             return;
         }
 
-        // Optional: toggle off if same building selected twice
-        if (placementManager.CurrentBuilding == buildingSO)
-        {
-            placementManager.DeselectBuilding();
-            Debug.Log($"UI: Deselected building {buildingSO.buildingName}");
-            return;
-        }
-
         placementManager.SelectBuilding(buildingSO);
-        Debug.Log($"UI: Selected building {buildingSO.buildingName}");
+        Debug.Log($"BuildMenuController: Selected building '{buildingSO.buildingName}'.");
     }
 
-    // Called by Cancel Button or Right-Click
+    /// <summary>
+    /// Called by Cancel Button or by other UI (e.g., right-click mapped to UI).
+    /// </summary>
     public void OnCancelPlacement()
     {
         if (placementManager == null)
@@ -48,6 +46,6 @@ public class BuildMenuController : MonoBehaviour
         }
 
         placementManager.DeselectBuilding();
-        Debug.Log("UI: Cancelled building placement.");
+        Debug.Log("BuildMenuController: Cancelled building placement.");
     }
 }

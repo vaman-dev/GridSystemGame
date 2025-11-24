@@ -3,21 +3,14 @@ using UnityEngine;
 
 /// <summary>
 /// PlacementValidator: validates whether a BuildingTypeSO can be placed at a given start tile.
-/// - Works purely in grid-space using Grid (pure C# class).
-/// - Uses BuildingTypeSO.placementRuleType to decide rule behavior.
-/// - Provides helpers: CanPlace, GetCoveredTiles, SetOccupied, ClearOccupied.
-/// - Now logs helpful debug messages when placement fails (occupied tile or out-of-bounds).
+/// Supports rotated footprints using CanPlaceBuildingGrid(width,height).
 /// </summary>
 public class PlacementValidator : MonoBehaviour
 {
     /// <summary>
-    /// High level API. Call from PlacementManager before placing.
+    /// Standard entry function for fixed-width buildings (non-rotated).
+    /// PlacementManager now calls CanPlaceBuildingGrid() instead when rotation active.
     /// </summary>
-    /// <param name="startX">Start grid X</param>
-    /// <param name="startY">Start grid Y</param>
-    /// <param name="building">BuildingTypeSO selected</param>
-    /// <param name="grid">Grid instance</param>
-    /// <returns>True if the footprint can be placed</returns>
     public bool CanPlace(int startX, int startY, BuildingTypeSO building, Grid grid)
     {
         if (building == null || grid == null)
@@ -37,17 +30,8 @@ public class PlacementValidator : MonoBehaviour
                 break;
 
             case PlacementRuleType.MultiTile:
-                result = CanPlaceMulti(startX, startY, width, height, grid);
-                break;
-
             case PlacementRuleType.RoadTile:
-                // For now treat roads same as multi-tile occupancy.
-                // Future: add adjacency/connection checks here.
-                result = CanPlaceMulti(startX, startY, width, height, grid);
-                break;
-
             case PlacementRuleType.DecorationTile:
-                // Decorations may have special rules later; for now same as multi.
                 result = CanPlaceMulti(startX, startY, width, height, grid);
                 break;
 
@@ -58,38 +42,59 @@ public class PlacementValidator : MonoBehaviour
 
         if (!result)
         {
-            // Try to get the first blocked tile and give a useful debug message
             Vector2Int? blocked = GetFirstBlockedTile(startX, startY, building, grid);
             if (blocked.HasValue)
             {
                 var b = blocked.Value;
                 if (!grid.IsInsideGrid(b.x, b.y))
-                {
-                    Debug.Log($"❌ Cannot place '{building.buildingName}' at ({startX},{startY}): tile ({b.x},{b.y}) is outside grid bounds.");
-                }
+                    Debug.Log($"❌ Out of bounds at ({b.x},{b.y})");
                 else
-                {
-                    Debug.Log($"❌ Cannot place '{building.buildingName}' at ({startX},{startY}): tile ({b.x},{b.y}) is already occupied.");
-                }
-            }
-            else
-            {
-                // Fallback generic message
-                Debug.Log($"❌ Cannot place '{building.buildingName}' at ({startX},{startY}). PlacementValidator returned false.");
+                    Debug.Log($"❌ Occupied at ({b.x},{b.y})");
             }
         }
 
         return result;
     }
 
-    // 1x1 placement check
+    // -------------------------------------------------------------------------
+    // ROTATION-AWARE VALIDATION
+    // -------------------------------------------------------------------------
+    /// <summary>
+    /// Validate placement with explicit width & height (used after rotation).
+    /// </summary>
+    public bool CanPlaceBuildingGrid(int gridX, int gridY, BuildingTypeSO buildingData, int checkWidth, int checkHeight, Grid grid)
+    {
+        if (buildingData == null || grid == null)
+        {
+            Debug.LogError("PlacementValidator: buildingData or grid is null");
+            return false;
+        }
+
+        for (int x = 0; x < checkWidth; x++)
+        {
+            for (int y = 0; y < checkHeight; y++)
+            {
+                int tx = gridX + x;
+                int ty = gridY + y;
+
+                if (!grid.IsInsideGrid(tx, ty) || grid.IsOccupied(tx, ty))
+                    return false;
+            }
+        }
+
+        return true;
+    }
+
+
+    // -------------------------------------------------------------------------
+    // Base multi / single logic
+    // -------------------------------------------------------------------------
     private bool CanPlaceSingle(int x, int y, Grid grid)
     {
         if (!grid.IsInsideGrid(x, y)) return false;
         return !grid.IsOccupied(x, y);
     }
 
-    // Multi-tile check (width x height)
     private bool CanPlaceMulti(int startX, int startY, int width, int height, Grid grid)
     {
         for (int dx = 0; dx < width; dx++)
@@ -103,14 +108,12 @@ public class PlacementValidator : MonoBehaviour
                 if (grid.IsOccupied(gx, gy)) return false;
             }
         }
-
         return true;
     }
 
-    /// <summary>
-    /// Returns all tiles that the building would cover (only tiles inside grid).
-    /// Useful for visualizing footprint (GridVisualizer) or marking occupancy.
-    /// </summary>
+    // -------------------------------------------------------------------------
+    // Utility functions
+    // -------------------------------------------------------------------------
     public List<Vector2Int> GetCoveredTiles(int startX, int startY, BuildingTypeSO building, Grid grid)
     {
         var tiles = new List<Vector2Int>();
@@ -129,13 +132,9 @@ public class PlacementValidator : MonoBehaviour
                     tiles.Add(new Vector2Int(gx, gy));
             }
         }
-
         return tiles;
     }
 
-    /// <summary>
-    /// Mark footprint tiles as occupied in the Grid instance. Call after a successful placement.
-    /// </summary>
     public void SetOccupied(int startX, int startY, BuildingTypeSO building, Grid grid)
     {
         if (building == null || grid == null) return;
@@ -147,16 +146,11 @@ public class PlacementValidator : MonoBehaviour
         {
             for (int dy = 0; dy < height; dy++)
             {
-                int gx = startX + dx;
-                int gy = startY + dy;
-                grid.SetOccupied(gx, gy, true);
+                grid.SetOccupied(startX + dx, startY + dy, true);
             }
         }
     }
 
-    /// <summary>
-    /// Clear occupancy for a footprint (used when removing/dismantling).
-    /// </summary>
     public void ClearOccupied(int startX, int startY, BuildingTypeSO building, Grid grid)
     {
         if (building == null || grid == null) return;
@@ -168,14 +162,11 @@ public class PlacementValidator : MonoBehaviour
         {
             for (int dy = 0; dy < height; dy++)
             {
-                int gx = startX + dx;
-                int gy = startY + dy;
-                grid.SetOccupied(gx, gy, false);
+                grid.SetOccupied(startX + dx, startY + dy, false);
             }
         }
     }
 
-    // Optional helper: returns the first tile that blocks placement (or null)
     public Vector2Int? GetFirstBlockedTile(int startX, int startY, BuildingTypeSO building, Grid grid)
     {
         if (building == null || grid == null) return null;
